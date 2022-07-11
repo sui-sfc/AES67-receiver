@@ -7,7 +7,7 @@ from enum import Enum
 
 
 import pyaudio
-CHUNK = 512
+CHUNK = 48
 
 p = pyaudio.PyAudio()
 stream = p.open(format=pyaudio.paInt24,
@@ -21,18 +21,24 @@ stream = p.open(format=pyaudio.paInt24,
 MCAST_GRP = '239.69.249.134'
 MCAST_PORT = 5004
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock = socket.socket(socket.AF_INET, 
+                     socket.SOCK_DGRAM, 
+                     socket.IPPROTO_UDP
+                     )
+
+
+sock.setsockopt(socket.SOL_SOCKET, 
+                socket.SO_REUSEADDR, 
+                1
+                )
+
 sock.bind(('', MCAST_PORT))
 mreq = struct.pack("4sl", socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
 sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 n = 0
 
-
-
 RED='\033[31m'
 END='\033[0m'
-
 
 class RtpPacket(KaitaiStruct):
     
@@ -112,15 +118,11 @@ class RtpPacket(KaitaiStruct):
             self.length = self._io.read_u2be()
 
 while True:
-    try:
-        sound,address = sock.recvfrom(CHUNK)
-        data = RtpPacket(KaitaiStream(BytesIO(sound)))
-        sound = data.data
-        
-        #print(RED+str(address)+END)
-        #print(sound)
-        stream.write(sound)
-    except:
-        pass
-
+    sound,address = sock.recvfrom(CHUNK)
+    data = RtpPacket(KaitaiStream(BytesIO(sound)))
+    sound = data.data
+    
+    #print(RED+str(address)+END)
+    #print(sound)
+    stream.write(sound)
 stream.close()

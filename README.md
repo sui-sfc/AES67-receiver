@@ -13,5 +13,7 @@ if "[Errno 48] Address already in use" error
 
 ```
 lsof -i:5004
+
+kill PID
 ```
 and kill tasks
