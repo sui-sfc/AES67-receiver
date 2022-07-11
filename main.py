@@ -8,11 +8,11 @@ from enum import Enum
 
 
 import pyaudio
-CHUNK = 1024
+CHUNK = 32
 
 p = pyaudio.PyAudio()
 stream = p.open(format=pyaudio.paInt24,
-                channels=1,
+                channels=2,
                 rate=48000,
                 output=True,
                 frames_per_buffer=CHUNK
@@ -113,11 +113,11 @@ class RtpPacket(KaitaiStruct):
             self.length = self._io.read_u2be()
 
 while True:
-    sound,address = sock.recvfrom(CHUNK)
+    sound,address = sock.recvfrom(CHUNK*4)
     data = RtpPacket(KaitaiStream(BytesIO(sound)))
-    print(RED+str(address)+END)
-    print(sound)
-    print(data.data)
-    #stream.write(data.data, CHUNK*4)
+    sound = data.data
+    #print(RED+str(address)+END)
+    #print(sound)
+    stream.write(sound,CHUNK)
 
 stream.close()
