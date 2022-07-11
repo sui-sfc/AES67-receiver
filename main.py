@@ -1,4 +1,3 @@
-
 import socket
 import struct
 from unittest import skip
@@ -8,7 +7,7 @@ from enum import Enum
 
 
 import pyaudio
-CHUNK = 32
+CHUNK = 512
 
 p = pyaudio.PyAudio()
 stream = p.open(format=pyaudio.paInt24,
@@ -113,11 +112,15 @@ class RtpPacket(KaitaiStruct):
             self.length = self._io.read_u2be()
 
 while True:
-    sound,address = sock.recvfrom(CHUNK*4)
-    data = RtpPacket(KaitaiStream(BytesIO(sound)))
-    sound = data.data
-    #print(RED+str(address)+END)
-    #print(sound)
-    stream.write(sound,CHUNK)
+    try:
+        sound,address = sock.recvfrom(CHUNK)
+        data = RtpPacket(KaitaiStream(BytesIO(sound)))
+        sound = data.data
+        
+        #print(RED+str(address)+END)
+        #print(sound)
+        stream.write(sound)
+    except:
+        pass
 
 stream.close()
