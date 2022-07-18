@@ -1,85 +1,19 @@
+from struct import unpack
+from audioop import add
 import socket
 import struct
 from unittest import skip
 import kaitaistruct
 from kaitaistruct import KaitaiStruct, KaitaiStream, BytesIO
 from enum import Enum
-
-
-import pyaudio
-CHUNK = 48
-
-p = pyaudio.PyAudio()
-stream = p.open(format=pyaudio.paInt24,
-                channels=2,
-                rate=48000,
-                output=True,
-                frames_per_buffer=CHUNK
-                )
-
-
-MCAST_GRP = '239.69.249.134'
-MCAST_PORT = 5004
-
-sock = socket.socket(socket.AF_INET, 
-                     socket.SOCK_DGRAM, 
-                     socket.IPPROTO_UDP
-                     )
-
-
-sock.setsockopt(socket.SOL_SOCKET, 
-                socket.SO_REUSEADDR, 
-                1
-                )
-
-sock.bind(('', MCAST_PORT))
-mreq = struct.pack("4sl", socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
-sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
-n = 0
-
-RED='\033[31m'
-END='\033[0m'
+import sounddevice as sd
+import numpy as np
 
 class RtpPacket(KaitaiStruct):
     
     class PayloadTypeEnum(Enum):
-        pcmu = 0
-        reserved1 = 1
-        reserved2 = 2
-        gsm = 3
-        g723 = 4
-        dvi4_1 = 5
-        dvi4_2 = 6
-        lpc = 7
-        pcma = 8
-        g722 = 9
-        l16_1 = 10
-        l16_2 = 11
-        qcelp = 12
-        cn = 13
-        mpa = 14
-        g728 = 15
-        dvi4_3 = 16
-        dvi4_4 = 17
-        g729 = 18
-        reserved19 = 19
-        unassigned20 = 20
-        unassigned21 = 21
-        unassigned22 = 22
-        unassigned23 = 23
-        unassigned24 = 24
-        celb = 25
-        jpeg = 26
-        unassigned27 = 27
-        nv = 28
-        unassigned29 = 29
-        unassigned30 = 30
-        h261 = 31
-        mpv = 32
-        mp2t = 33
-        h263 = 34
+
         pcm = 36
-        mpeg_ps = 96
     def __init__(self, _io, _parent=None, _root=None):
         self._io = _io
         self._parent = _parent
@@ -117,12 +51,64 @@ class RtpPacket(KaitaiStruct):
             self.id = self._io.read_u2be()
             self.length = self._io.read_u2be()
 
+
+interface = 'en6'
+CHUNK = 48*24
+#1152
+MCAST_GRP = '239.69.138.19'
+MCAST_PORT = 5004
+ETH_P_ALL = 3
+sd.default.samplerate = 48000  # サンプリングレート
+sd.default.channels = 2  # チャネル数
+
+sock = socket.socket(socket.AF_INET, 
+                     socket.SOCK_DGRAM, 
+                     socket.IPPROTO_UDP
+                     )
+
+
+sock.setsockopt(socket.SOL_SOCKET, 
+                socket.SO_REUSEADDR, 
+                1
+                )
+
+sock.bind(('', MCAST_PORT))
+mreq = struct.pack("4sl", socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
+sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+n = 0
+
+RED='\033[31m'
+END='\033[0m'
+
+
+sound = b''
+i=0
+n=0
+
+
+
+tmp, address = sock.recvfrom(288*4)
+data = RtpPacket(KaitaiStream(BytesIO(tmp)))
+#stream.write(sound)
+print(address)
+
+
 while True:
-    sound,address = sock.recvfrom(CHUNK)
-    data = RtpPacket(KaitaiStream(BytesIO(sound)))
+    tmp, address = sock.recvfrom(CHUNK*4)
+    data = RtpPacket(KaitaiStream(BytesIO(tmp)))
     sound = data.data
     
-    #print(RED+str(address)+END)
-    #print(sound)
-    stream.write(sound)
+    read_frames = len(sound)
+    nbyte = 3
+    data = [unpack("<i",
+            bytearray([0]) + sound[nbyte * idx:nbyte * (idx + 1)])[0]
+            for idx in range(read_frames)]
+    sound = np.array(data, dtype='int16')
+    sd.play(sound)
+    #'''
+    n+=1
+    
+
+
+    
 stream.close()
