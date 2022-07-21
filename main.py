@@ -56,7 +56,6 @@ def receive():
     print('data====================')
     print(data.hex())
     print('sound====================')
-    rbuf.add(RTPSTRIP(data))
     print(RTPSTRIP(data).hex())
     while True:
         sound=b''
@@ -64,15 +63,15 @@ def receive():
             data, address = sock.recvfrom(1280+32)
             sound+=RTPSTRIP(data)
         rbuf.add(sound)
-        n+=1
+        n=2
 
 def a_play():
     global n
     print('a_play')
-    CHUNK = 48*24
+    CHUNK = 288
     p = pyaudio.PyAudio()
     stream = p.open(format=pyaudio.paInt24,
-                    channels=1,
+                    channels=2,
                     rate=48000,
                     output=True,
                     frames_per_buffer=CHUNK
@@ -80,10 +79,10 @@ def a_play():
     while True:
         try:
             sound = rbuf.get()
-            if n % 2:
+            if n > 1:
                 print(len(sound))
-                stream.write(bytes(sound))
-                n=0
+                stream.write(bytes(sound),CHUNK)
+                
         except:
             pass
 
