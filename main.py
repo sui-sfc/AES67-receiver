@@ -4,8 +4,7 @@ import socket
 import struct
 from tarfile import CHRTYPE
 import pyaudio
-from requests import NullHandler
-
+import time
 
 class RingBuffer:
     def __init__(self, size):
@@ -33,15 +32,16 @@ class RingBuffer:
 def RTPSTRIP(data):
     return (bytearray(data)[12:])
 
+
 def receive():
     print('receive')
     MCAST_GRP = '239.69.138.19'
     MCAST_PORT = 5004
 
     sock = socket.socket(socket.AF_INET,
-                        socket.SOCK_DGRAM,
-                        socket.IPPROTO_UDP
-                        )
+                         socket.SOCK_DGRAM,
+                         socket.IPPROTO_UDP
+                         )
 
     sock.setsockopt(socket.SOL_SOCKET,
                     socket.SO_REUSEADDR,
@@ -57,18 +57,20 @@ def receive():
     print(data.hex())
     print('sound====================')
     print(RTPSTRIP(data).hex())
+    
     while True:
-        sound=b''
-        for i in range(8):
-            data, address = sock.recvfrom(1280+32)
-            sound+=RTPSTRIP(data)
+        sound = b''
+        data, address = sock.recvfrom(1280+32)
+        sound = RTPSTRIP(data)
         rbuf.add(sound)
-        n=2
+        
+
 
 def a_play():
+    time.sleep(0.1)
     global n
     print('a_play')
-    CHUNK = 288
+    CHUNK = 288*4
     p = pyaudio.PyAudio()
     stream = p.open(format=pyaudio.paInt24,
                     channels=2,
@@ -78,13 +80,14 @@ def a_play():
                     )
     while True:
         try:
-            sound = rbuf.get()
-            if n > 1:
-                print(len(sound))
-                stream.write(bytes(sound),CHUNK)
-                
+            sound = b''
+            for i in range(32):
+                sound += rbuf.get()
+            stream.write(bytes(sound),CHUNK)
+
         except:
             pass
+
 
 '''
 data, address = sock.recvfrom(CHUNK)
@@ -97,7 +100,7 @@ sound = bytearray(data)[12:]
 
 if __name__ == '__main__':
     #48*24*2
-    global sound,n
+    global sound, n
     n = 0
     r_CHUNK = 288*4
     rbuf = RingBuffer(16)
